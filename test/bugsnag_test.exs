@@ -1,6 +1,10 @@
 defmodule BugsnagTest do
   use ExUnit.Case
 
+  alias Bugsnag.HTTPMock
+  alias Bugsnag.HTTPClient.Request
+  alias Bugsnag.HTTPClient.Response
+
   import ExUnit.CaptureLog
 
   defmodule FilterAll do
@@ -13,6 +17,14 @@ defmodule BugsnagTest do
 
   defmodule FilterCrash do
     def should_notify(_e, _s), do: raise("boom")
+  end
+
+  setup_all do
+    Application.put_env(:bugsnag, :http_client, HTTPMock)
+
+    on_exit(fn ->
+      Application.delete_env(:bugsnag, :http_client)
+    end)
   end
 
   setup do
@@ -38,6 +50,7 @@ defmodule BugsnagTest do
     Application.put_env(:bugsnag, :release_stage, "production")
     on_exit(fn -> Application.put_env(:bugsnag, :release_stage, old_release_stage) end)
 
+    Mox.expect(HTTPMock, :post, fn %Request{} -> {:ok, Response.new(200, [], "body")} end)
     assert :ok = Bugsnag.sync_report(RuntimeError.exception("some_error"))
   end
 
@@ -136,6 +149,7 @@ defmodule BugsnagTest do
     on_exit(fn -> Application.put_env(:bugsnag, :notify_release_stages, old_notify_stages) end)
     on_exit(fn -> Application.put_env(:bugsnag, :exception_filter, nil) end)
 
+    Mox.expect(HTTPMock, :post, fn %Request{} -> {:ok, Response.new(200, [], "body")} end)
     assert :ok = Bugsnag.sync_report(RuntimeError.exception("some_error"))
   end
 
@@ -150,6 +164,7 @@ defmodule BugsnagTest do
     on_exit(fn -> Application.put_env(:bugsnag, :release_stage, old_release_stage) end)
     on_exit(fn -> Application.put_env(:bugsnag, :notify_release_stages, old_notify_stages) end)
 
+    Mox.expect(HTTPMock, :post, fn %Request{} -> {:ok, Response.new(200, [], "body")} end)
     assert :ok = Bugsnag.sync_report(RuntimeError.exception("some_error"))
   end
 
@@ -164,6 +179,7 @@ defmodule BugsnagTest do
     on_exit(fn -> Application.put_env(:bugsnag, :release_stage, old_release_stage) end)
     on_exit(fn -> Application.put_env(:bugsnag, :notify_release_stages, old_notify_stages) end)
 
+    Mox.expect(HTTPMock, :post, fn %Request{} -> {:ok, Response.new(200, [], "body")} end)
     assert :ok = Bugsnag.sync_report(RuntimeError.exception("some_error"))
   end
 end
