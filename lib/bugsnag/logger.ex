@@ -51,20 +51,11 @@ defmodule Bugsnag.Logger do
           _ -> nil
         end
 
-      base_metadata = %{last_event: last_event}
-      options = %{stacktrace: stacktrace}
-
-      options =
-        case extract_socket_metadata(socket) do
-          %{metadata: metadata} ->
-            Map.put(options, :metadata, Map.merge(base_metadata, metadata))
-
-          other when is_map(other) ->
-            options |> Map.put(:metadata, base_metadata) |> Map.merge(other)
-        end
-        |> Keyword.new()
-
-      Bugsnag.report(exception, options)
+      Bugsnag.report(exception,
+        stacktrace: stacktrace,
+        last_event: last_event,
+        metadata: socket |> extract_socket_metadata() |> Map.put(:last_event, last_event)
+      )
     rescue
       ex -> report_failure(ex)
     end
@@ -102,22 +93,12 @@ defmodule Bugsnag.Logger do
     extractor = Application.get_env(:bugsnag, :socket_metadata_extractor)
 
     if extractor do
-      {module, function} = extractor
-      %{metadata: apply(module, function, [socket])}
+      case apply(extractor, :extract, [socket]) do
+        map when is_map(map) -> map
+        _ -> %{notice: "Invalid socket_metadata_extractor"}
+      end
     else
-      extract_user_info(socket)
+      %{}
     end
   end
-
-  defp extract_user_info(socket) do
-    %{
-      user: socket.assigns[:current_user] |> user_info()
-    }
-  end
-
-  defp user_info(%{id: id, name: name, email: email}) do
-    %{id: id, email: email, name: name}
-  end
-
-  defp user_info(_), do: nil
 end

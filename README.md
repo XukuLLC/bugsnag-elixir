@@ -275,19 +275,20 @@ An adapter implementing the `Bugsnag.HTTPClient` behaviour.
 
 **Default** `nil`
 
-If nothing is provided, we extract the user info `{id: id, name: name, email: email}` from
-an expected `current_user` within the socket.
+Extract additional metadata from the liveview socket.
+
+An extractor implementing the `Bugsnag.Behaviours.SocketMetadataExtractorBehaviour` behaviour.
 
 Example
 
 ```elixir
 defmodule MyModule do
-  def my_func(socket) do
+  def extract(socket) do
     %{user: socket.assigns.current_user}
   end
 end
 
-config :bugsnag, sanitizer: {MyModule, :my_func}
+config :bugsnag, socket_metadata_extractor: MyModule
 ```
 
 ```elixir
@@ -296,7 +297,7 @@ config :bugsnag, sanitizer: {MyModule, :my_func}
 }
 ```
 
-Will add a metadata of `%{user: %{name: "Name"}}`, which will be visible in the bugsnag dashboard.
+Will add a metadata of `%{user: %{name: "Name"}}`, which will be visible in the bugsnag dashboard in a separate tab.
 
 
 
