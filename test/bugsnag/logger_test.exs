@@ -7,7 +7,7 @@ defmodule Bugsnag.LoggerTest do
   import ExUnit.CaptureLog
   import Mox
 
-  @receive_timeout 5_000
+  @receive_timeout 1_000
 
   setup :set_mox_global
   setup :verify_on_exit!
@@ -136,6 +136,54 @@ defmodule Bugsnag.LoggerTest do
 
     {:ok, pid} = ErrorServer.start()
     GenServer.cast(pid, :fail)
+
+    assert_receive {:post, ^ref}, @receive_timeout
+    verify!()
+  end
+
+  test "logging exceptions from LiveView" do
+    # Ensure we ignore the liveview event in :error_report handler.
+    error_report_event =
+      {:error_report, self(),
+       {self(), :error, [initial_call: {Phoenix.LiveView.Channel, :init, []}]}}
+
+    log_msg =
+      capture_log(fn ->
+        Bugsnag.Logger.handle_event(error_report_event, :state)
+      end)
+
+    assert log_msg == ""
+
+    # Ensure we log liveview specific error events in :error handler.
+    exception = %RuntimeError{message: "Jerry"}
+    stacktrace = []
+
+    error_event =
+      {:error, :anything,
+       {self(), :anything,
+        [
+          self(),
+          :last_event,
+          %{
+            socket: %{
+              assigns: %{current_user: %{id: 1, name: "Tom", email: "tom@tomandjerry.com"}}
+            }
+          },
+          {exception, stacktrace}
+        ]}}
+
+    parent = self()
+    ref = make_ref()
+
+    Mox.expect(HTTPMock, :post, fn %Request{body: body} ->
+      if exception?(body, "Elixir.RuntimeError", "Jerry") do
+        send(parent, {:post, ref})
+      end
+
+      {:ok, Response.new(200, [], "body")}
+    end)
+
+    Bugsnag.Logger.handle_event(error_event, :state)
 
     assert_receive {:post, ^ref}, @receive_timeout
     verify!()

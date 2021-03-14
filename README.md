@@ -36,9 +36,11 @@ Capture exceptions and send them to the [Bugsnag](https://www.bugsnag.com/) API!
     - [`exception_filter`](#exception_filter)
     - [`json_library`](#json_library)
     - [`http_client`](#http_client)
+    - [`socket_metadata_extractor`](#socket_metadata_extractor)
   - [Usage](#usage)
     - [Manual Reporting](#manual-reporting)
     - [Reporting Options](#reporting-options)
+  - [License](#license)
 
 <!-- /MarkdownTOC -->
 
@@ -109,7 +111,8 @@ config :bugsnag,
   notify_release_stages: ["staging", "production"],
   release_stage: {:system, "MY_APP_ENV", "production"},
   sanitizer: {MyModule, :my_function},
-  use_logger: true
+  use_logger: true,
+  socket_metadata_extractor: {MyModule, :my_function}
 ```
 
 See below for explanations of each option, including some options not used here.
@@ -267,6 +270,36 @@ The JSON encoding library.
 **Default** `Bugsnag.HTTPClient.Adapters.HTTPoison`
 
 An adapter implementing the `Bugsnag.HTTPClient` behaviour.
+
+### `socket_metadata_extractor`
+
+**Default** `nil`
+
+Extract additional metadata from the liveview socket.
+
+An extractor implementing the `Bugsnag.Behaviours.SocketMetadataExtractorBehaviour` behaviour.
+
+Example
+
+```elixir
+defmodule MyModule do
+  def extract(socket) do
+    %{user: socket.assigns.current_user}
+  end
+end
+
+config :bugsnag, socket_metadata_extractor: MyModule
+```
+
+```elixir
+%Socket{
+  assigns: %{current_user: %{name: "Name"}}
+}
+```
+
+Will add a metadata of `%{user: %{name: "Name"}}`, which will be visible in the bugsnag dashboard in a separate tab.
+
+
 
 ## Usage
 
